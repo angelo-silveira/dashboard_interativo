@@ -1,20 +1,15 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { generateMockData, filterData, parseUploadedFile } from './services/dataService';
-import { dbService, User } from './services/databaseService';
+import { dbService } from './services/databaseService';
 import { SaleRecord, Language, Theme, Currency } from './types';
 import KPICards from './components/KPICards';
 import ChartsSection from './components/ChartsSection';
 import DataGrid from './components/DataGrid';
 import ExportMenu from './components/ExportMenu';
-import Login from './components/Login';
-import { LayoutDashboard, Table, Filter, RefreshCw, BarChart2, Upload, Settings, Moon, Sun, DollarSign, Share2, LogOut, Database } from 'lucide-react';
+import { LayoutDashboard, Table, Filter, RefreshCw, BarChart2, Upload, Settings, Moon, Sun, Share2 } from 'lucide-react';
 import { getTranslation, getDataTranslation } from './utils/translations';
 
 const App: React.FC = () => {
-  // Auth State
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-
   // App Data State
   const [rawData, setRawData] = useState<SaleRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -45,18 +40,9 @@ const App: React.FC = () => {
   // Translation helper
   const t = getTranslation(language);
 
-  // 1. Initial Auth Check on Mount
+  // 1. Initial Data Load on Mount
   useEffect(() => {
-    const checkSession = async () => {
-      const currentUser = dbService.getCurrentUser();
-      if (currentUser) {
-        setUser(currentUser);
-        await loadInitialData();
-      } else {
-        setAuthLoading(false);
-      }
-    };
-    checkSession();
+    loadInitialData();
   }, []);
 
   // Auto-switch currency on language change
@@ -70,30 +56,11 @@ const App: React.FC = () => {
     }
   }, [language]);
 
-  // Login Handler
-  const handleLogin = async (email: string, pass: string) => {
-    setAuthLoading(true);
-    try {
-      const user = await dbService.login(email, pass);
-      setUser(user);
-      await loadInitialData();
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  // Logout Handler
-  const handleLogout = () => {
-    dbService.logout();
-    setUser(null);
-    setRawData([]);
-  };
-
   // Load Data Logic (DB or Mock)
   const loadInitialData = async () => {
     setLoading(true);
     try {
-      // Try loading from "Database" first
+      // Try loading from "Database" first (Local persistence)
       const dbData = await dbService.getDashboardData();
       
       if (dbData && dbData.length > 0) {
@@ -104,7 +71,6 @@ const App: React.FC = () => {
       }
     } finally {
       setLoading(false);
-      setAuthLoading(false);
     }
   };
 
@@ -113,9 +79,6 @@ const App: React.FC = () => {
     setTimeout(() => {
       const newData = generateMockData(500);
       setRawData(newData);
-      // Optional: Don't save auto-generated refresh data to DB to avoid overwriting user uploads unexpectedly,
-      // or uncomment below to save it.
-      // dbService.saveDashboardData(newData);
       setLoading(false);
     }, 600);
   };
@@ -132,7 +95,7 @@ const App: React.FC = () => {
       setSelectedRegions([]);
       setSelectedCategories([]);
       
-      // Save to "Database"
+      // Save to "Database" for persistence
       await dbService.saveDashboardData(data);
       
     } catch (error) {
@@ -187,17 +150,6 @@ const App: React.FC = () => {
 
   // --- RENDER LOGIC ---
 
-  if (!user) {
-    return (
-      <Login 
-        onLogin={handleLogin} 
-        lang={language} 
-        onLanguageChange={setLanguage} 
-        isLoading={authLoading} 
-      />
-    );
-  }
-
   return (
     <div className={`${theme}`}>
       <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
@@ -220,21 +172,6 @@ const App: React.FC = () => {
                 title={theme === 'light' ? t.dark : t.light}
               >
                 {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-              </button>
-            </div>
-
-            {/* User Info */}
-            <div className="mb-6 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg flex items-center justify-between">
-              <div className="flex flex-col">
-                 <span className="text-[10px] uppercase text-gray-400 font-bold">{t.welcome}</span>
-                 <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[140px]">{user.name}</span>
-              </div>
-              <button 
-                onClick={handleLogout}
-                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
-                title={t.logout}
-              >
-                <LogOut className="w-4 h-4" />
               </button>
             </div>
 
