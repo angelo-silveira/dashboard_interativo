@@ -1,0 +1,5 @@
+{
+  "name": "Dashboard interativo ",
+  "description": "A comprehensive React dashboard port of a Streamlit application, featuring real-time data generation, interactive filtering, dynamic charts using Recharts, and data export capabilities.",
+  "requestFramePermissions": []
+}
